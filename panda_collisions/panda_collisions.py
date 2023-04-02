@@ -24,14 +24,18 @@ class CollisionWrapper:
             {"from":BitMask32(0b0111),"into":BitMask32(0b0000)},
                         "terrain":
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
-                        "waypoint":
+                        "waypoint": # things that are already defined as waypoints
+            {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
+                        "item": # things that are not yet defined as waypoints, but are interactable.
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "players":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
                         "NPC":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
                         "wall":
-            {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},}
+            {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
+            
+            }
         
         
         self.cTrav = CollisionTraverser()
@@ -98,8 +102,6 @@ class CollisionWrapper:
     def create_complex(self,world_object,tagname="terrain"):
         """ """
         
-        if tagname!="terrain":
-            print("tagname created",tagname)
         collision_mask=self.bitmasks[tagname]["into"]
         my_ob=panda_object_create_load.make_object(self.node_root,world_object.verts,world_object.faces,tag_tuple=(tagname,str(world_object.id)),collision_mask=collision_mask)
         self.collision_objects[world_object.id]=my_ob
@@ -121,12 +123,11 @@ class CollisionWrapper:
                     self.attach_collision_node(engine_ob,tag_tuple)
         
         
-    def create_collision_node(self,ob_id,tag_name,verbose=False):
+    def create_collision_node(self,ob_id,tag_name):
         """
         so the collision objects gets the same tag as the worldobject
         """
-        if verbose:
-            print("creating for",tag_name,ob_id)
+        
         # ok,so, terrain stuff is difficult because I'm not
         # previously I was just using the terrian geometry.
         
@@ -142,7 +143,7 @@ class CollisionWrapper:
         # object dict for updating and deleting.
         self.collision_objects[ob_id]=col_NodeNP
         
-        col_body = CollisionSphere((0,0,0),1)
+        col_body = CollisionSphere((0,0,0),0.3)
         col_Node.addSolid(col_body)
         
         # set mask
@@ -152,18 +153,12 @@ class CollisionWrapper:
         #set it up so it's being tracked.
         self.cTrav.addCollider(col_NodeNP,self.CH_world)
         
-    def fetch_objects_from_collision(self,collisionargs,verbose=False):
+    def fetch_objects_from_collision(self,collisionargs):
         #I should unpack these.
         
-        if verbose:
-            print("getting objects from collision",collisionargs)
-            
         fromn = collisionargs[0].from_node
-        inton = collisionargs[0].into_node #getIntoNodePath()#into_node # getInto()
-        
-        if verbose:
-            print("engine_ob,collision ids",id(fromn),id(inton))
-        
+        inton = collisionargs[0].into_node
+                
         collision_normal=collisionargs[0].getSurfaceNormal(self.node_root)
         
         # what is this?
@@ -241,7 +236,7 @@ class CollisionWrapper:
         n_entries =self.CHQ_mouse.getNumEntries() 
         
         entry_index = 0
-        tag_names=["waypoint","terrain","object","NPC","wall"]
+        tag_names=["waypoint","terrain","object","NPC","wall","item"]
         
         for tag in tag_names:
             mouse_collision_tags[tag]=[]
