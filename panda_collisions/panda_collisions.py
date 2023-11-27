@@ -104,10 +104,17 @@ class CollisionWrapper:
         
         collision_mask=self.bitmasks[tagname]["into"]
         my_ob=panda_object_create_load.make_object(self.node_root,world_object.verts,world_object.faces,tag_tuple=(tagname,str(world_object.id)),collision_mask=collision_mask)
-        self.collision_objects[world_object.id]=my_ob
+        self.collision_objects[world_object.id] = my_ob
         
         my_ob.setPos(*world_object.pos)
-                
+    
+    def clear_all(self):
+        for key in self.collision_objects:
+            ob=self.collision_objects[key]
+            ob.removeNode()
+        
+        self.collision_objects={}
+    
     def collision_checks(self):
         #actually look for collisions
         self.cTrav.traverse(self.node_root)
