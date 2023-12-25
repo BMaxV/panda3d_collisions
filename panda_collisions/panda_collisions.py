@@ -20,12 +20,12 @@ from panda_object_create import panda_object_create_load
 # You want a collision between two objects.
 
 # fundamentally, the process goes like this:
-	
-	# ObjectA.setup()
-	# ObjectB.setup()
-	# collisiontraverser.traverse()
-	# your_collision = collisionhandlerqueue.getentries()
-	
+    
+    # ObjectA.setup()
+    # ObjectB.setup()
+    # collisiontraverser.traverse()
+    # your_collision = collisionhandlerqueue.getentries()
+    
 # Done.
 
 # Now for the details. E.g. "how to set up mouse click.
@@ -121,7 +121,13 @@ class CollisionWrapper:
         
         this will require a dictionary as input
         
-        
+        {"create":
+            {ob_id:"tag_name",
+            ...},
+         "update":
+            {ob_id:position, # as 3 value tuple or something
+            ...},
+        }
         """
         # tags I want... Actors, terrain, UI, Walls/structures?
         # then check the queue for the collisions I have found.
@@ -133,18 +139,25 @@ class CollisionWrapper:
                 self.create_collision_node(ob_id,tag_name)
         
         if "create complex" in input_d:
-            for wo in input_d["create complex"]:
-                
-                tagname=input_d["create complex"][wo][0]
+            # ok, doing this, having objects be keys in an input
+            # dict is incredibly annoying, I should not be doing this.
+            for wo_id in input_d["create complex"]:
+                wo = input_d["create complex"][wo_id][0]
+                tagname = input_d["create complex"][wo_id][1]
                 self.create_complex(wo,tagname=tagname)
-            
         
         if "update" in input_d:
             for ob_id in input_d["update"]:
                 if ob_id not in self.collision_objects:
                     continue
-                    
-                self.collision_objects[ob_id].setPos(*tuple(input_d["update"][ob_id]))
+                
+                data = input_d["update"][ob_id]
+                
+                self.collision_objects[ob_id].setPos(*tuple(data[0]))
+                
+                if data[1] != None:
+                    self.collision_objects[ob_id].setHpr(*tuple(data[1]))
+        
                 
         if "bin move" in input_d:
             
@@ -164,12 +177,16 @@ class CollisionWrapper:
             input_d["destroy"]=[]
     
     def create_complex(self,world_object,tagname="terrain"):
-        """ """
+        """ 
+        this depends on my custom object function, which is kind
+        of optional, so...
         
-        collision_mask=self.bitmasks[tagname]["into"]
-        my_ob=panda_object_create_load.make_object(self.node_root,world_object.verts,world_object.faces,tag_tuple=(tagname,str(world_object.id)),collision_mask=collision_mask)
+        let's comment that out or move it to a different file?
+        """
+        
+        collision_mask = self.bitmasks[tagname]["into"]
+        my_ob = panda_object_create_load.make_object(self.node_root,world_object.verts,world_object.faces,tag_tuple=(tagname,str(world_object.id)),collision_mask=collision_mask)
         self.collision_objects[world_object.id] = my_ob
-        
         my_ob.setPos(*world_object.pos)
     
     def clear_all(self):
@@ -202,7 +219,7 @@ class CollisionWrapper:
                     collision_mask=BitMask32.bit(1)
                     self.attach_collision_node(engine_ob,tag_tuple)
          
-    def create_collision_node(self,ob_id,tag_name):
+    def create_collision_node(self,ob_id,tag_name,radius=0.3):
         """
         ob_id and tagname are arbitray, but should be basic types that can be used as
         dictionary keys.
@@ -213,7 +230,7 @@ class CollisionWrapper:
         # same pattern as the mouse ray
         # define node type and shape
         col_Node = CollisionNode("general_col_node")
-        col_body = CollisionSphere((0,0,0),0.3)
+        col_body = CollisionSphere((0,0,0),radius)
         col_Node.addSolid(col_body)
         
         # track the object.
@@ -335,8 +352,8 @@ class CollisionWrapper:
         
         # this is a bit awkward...
         while entry_index < n_entries and n_entries > 0:
-			
-			# this is how we get the entry and collision object from the underlying C/C++ part of panda
+            
+            # this is how we get the entry and collision object from the underlying C/C++ part of panda
             collision_entry = self.CHQ_mouse.getEntry(entry_index)
             collision_node = collision_entry.getIntoNode()
             
@@ -351,9 +368,9 @@ class CollisionWrapper:
                 if ob_id == '':
                     continue
                 if ob_id not in mouse_collision_tags[x]:
-					mouse_collision_tags[x].append(ob_id)
-			
-			# loop around.
+                    mouse_collision_tags[x].append(ob_id)
+            
+            # loop around.
             entry_index += 1
         
         # clean up the dictionary.
