@@ -254,11 +254,18 @@ class CollisionWrapper:
         
     def fetch_objects_from_collision(self,collisionargs):
         #I should unpack these.
-        
+        """
+        https://docs.panda3d.org/1.10/python/reference/panda3d.core.CollisionEntry#panda3d.core.CollisionEntry
+        """
+        #print("panda collisions, collisionargs\n", collisionargs[0])
+        #print(collisionargs[0])
         fromn = collisionargs[0].from_node
         inton = collisionargs[0].into_node
-                
-        collision_normal=collisionargs[0].getSurfaceNormal(self.node_root)
+        
+        surface_point = collisionargs[0].getSurfacePoint(self.node_root)
+        contact_pos = collisionargs[0].getContactPos(self.node_root)
+        interior_point = collisionargs[0].getInteriorPoint(self.node_root)
+        collision_normal = collisionargs[0].getSurfaceNormal(self.node_root)
         
         # what is this?
         prevt = collisionargs[0]
@@ -274,7 +281,9 @@ class CollisionWrapper:
                 "from id":from_id,
                 "into tag":into_tag,
                 "into id":into_id,
-                "collision normal":collision_normal}
+                "collision normal":collision_normal,
+                "interior point":interior_point,
+                "surface point":surface_point}
         
         return output_d
     
