@@ -50,6 +50,8 @@ def main():
         if not W.single_update:
 
             # this creates default spheres for 3 objects
+            # format is ("unique id","predefined collision group")
+            # check the source for details.
             W.collisions.update(
                 {"create": {"myNPC1": "NPC", "myNPC2": "NPC", "myNPC3": "NPC"}})
             W.collisions.update({"update": {

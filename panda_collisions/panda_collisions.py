@@ -75,8 +75,9 @@ from panda_object_create import panda_object_create_load
 # the mouse ray will collide with both and you can click on both.
 
 class CollisionWrapper:
-    def __init__(self,client=True):        
+    def __init__(self,client=True,simple_collision_radius=0.3):        
         self.node_root = NodePath("node_root")
+        self.simple_collision_radius = simple_collision_radius
         self.collision_objects = {}
         self.collision_bins = {}
         
@@ -87,11 +88,15 @@ class CollisionWrapper:
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "waypoint": 
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
+                        "UI": 
+            {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "item":
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "players":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
                         "NPC":
+            {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
+                        "projectile":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
                         "wall":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
@@ -219,13 +224,16 @@ class CollisionWrapper:
                     collision_mask=BitMask32.bit(1)
                     self.attach_collision_node(engine_ob,tag_tuple)
          
-    def create_collision_node(self,ob_id,tag_name,radius=0.3):
+    def create_collision_node(self,ob_id,tag_name,radius=None):
         """
         ob_id and tagname are arbitray, but should be basic types that can be used as
         dictionary keys.
         
         step 2 for the crash course
         """
+        
+        if radius == None:
+            radius = self.simple_collision_radius
         
         # same pattern as the mouse ray
         # define node type and shape
@@ -351,11 +359,11 @@ class CollisionWrapper:
         # this whole last part answers the question: 
         # "but WHICH object has my mouse ray collided with?"
         entry_index = 0
-        tag_names = ["waypoint","terrain","object","NPC","wall","item"]
+        tag_names = ["waypoint","terrain","object","NPC","wall","item","UI"]
         
         mouse_collision_tags = {}
         for tag in tag_names:
-            mouse_collision_tags[tag]=[]
+            mouse_collision_tags[tag] = []
             
         mouse_3d = None
         
