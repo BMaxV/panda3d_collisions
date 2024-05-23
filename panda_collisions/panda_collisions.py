@@ -130,7 +130,7 @@ class CollisionWrapper:
             {ob_id:"tag_name",
             ...},
          "update":
-            {ob_id:position, # as 3 value tuple or something
+            {ob_id:(position,rotation), two three value tuples
             ...},
         }
         """
@@ -142,6 +142,24 @@ class CollisionWrapper:
                 
                 tag_name = input_d["create"][ob_id]
                 self.create_collision_node(ob_id,tag_name)
+        
+        if "reparent to dummy" in input_d:
+            # I recently encountered a problem:
+            # a multi part object that I could send lots of individual commands to
+            # but parenting is a way better idea. so.
+            
+            my_list = input_d["reparent to dummy"]
+            for my_tuple in my_list:
+                dummy_id, other_ids = my_tuple
+                
+                if dummy_id not in self.collision_objects:
+                    my_dummy_node = NodePath(dummy_id)
+                else:
+                    my_dummy_node = self.collision_objects[dummy_id]
+                
+                for other in other_ids:
+                    ob = self.collision_objects[other]
+                    ob.reparentTo(my_dummy_node)
         
         if "create complex" in input_d:
             # ok, doing this, having objects be keys in an input
