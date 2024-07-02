@@ -11,6 +11,14 @@ class Wrapper:
         
         self.single_update = False
 
+class WorldObject:
+    def __init__(self,myid):
+        self.id = myid
+        self.verts = []
+        self.faces = [[0,1,2,3]] # this has to be a list of lists, with
+        # one entry. best don't change this if you don't want to 
+        # dig into how object creation works.
+
 class MyCollisionTest(unittest.TestCase):
     
     def test_simple(self):
@@ -42,7 +50,41 @@ class MyCollisionTest(unittest.TestCase):
         # where it's and the values *ARE* "Equal"
         match = recursive_unequal(collisions,expected_output)
         assert match
-
+    
+    def test_basic_terrain_setup(self):
+        W = Wrapper()
+        
+        terrain_ob = WorldObject("terrain_id")
+        terrain_ob.pos=(0,0,0)
+        terrain_ob.verts = [(0,0,0),(2,0,0),(2,2,0),(0,2,0)]
+        #World.py:10184: specialdict.mysetter(self.collision_inputs,["create complex",myuiob.id],(myuiob,"UI")) # "create, id, tagname
+        W.collisions.update({
+            "create": {"myNPC1": "NPC"}, 
+            "create complex":{"terrain_id":(terrain_ob,"terrain")},
+            "create subpart":{"myNPC1":{
+                    "sub part id":"groundray",
+                    "sub tagname":"terrainray",
+                    "sub part shape":("ray",None), # could be ("name",direction vector = (0,0,-1)) but none is default
+                    "sub part offset":(0,0,5),
+                    "sub part rotation":(0,0,0),
+                    }},
+                })
+            
+        W.collisions.update({"update": {"myNPC1": ((1, 1, 0), (0, 0, 0))}})
+        r = W.collisions.collision_checks()
+        
+        # basic setup works
+        assert r == {"('myNPC1', 'groundray')": {'terrain_id': {'from tag': 'terrainray', 'from id': "('myNPC1', 'groundray')", 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1, 1, 0), 'surface point': LPoint3f(1, 1, 0)}}}
+        
+        
+        # updating position works, and returns correct follow up points
+        W.collisions.update({"update": {"myNPC1": ((1.1, 1.1, 0), (0, 0, 0))}})
+        r = W.collisions.collision_checks()
+        assert r == {"('myNPC1', 'groundray')": {'terrain_id': {'from tag': 'terrainray', 'from id': "('myNPC1', 'groundray')", 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1.1, 1.1, 0), 'surface point': LPoint3f(1.1, 1.1, 0)}}}
+        
+        
+        # I guess I should add a test for cleanup?
+        
 def recursive_unequal(my_dict,compare_dict):
     all_equal=True
     for key in my_dict:

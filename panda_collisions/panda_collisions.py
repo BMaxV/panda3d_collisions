@@ -75,17 +75,33 @@ from panda_object_create import panda_object_create_load
 # the mouse ray will collide with both and you can click on both.
 
 class CollisionWrapper:
+    
+    """
+    one of the weaknesses of this system is that it's copying
+    the id's of game objects and it's mapping pretty much one to one.
+    which is bad, I can't setup a separate hitbox for body parts.
+    
+    so that's something I have to address anyway.
+    Hm.
+    HMMMMM.
+    
+    """
+    
     def __init__(self,client=True,simple_collision_radius=0.3):        
         self.node_root = NodePath("node_root")
         self.simple_collision_radius = simple_collision_radius
+        self.collision_objects_parts = {}
         self.collision_objects = {}
         self.collision_bins = {}
+        self.id_mappings = {}
         
         # see the bitmask step at the beginning for what this means.
         self.bitmasks={"mouseray":
             {"from":BitMask32(0b0111),"into":BitMask32(0b0000)},
                         "terrain":
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
+                        "terrainray":      
+            {"from":BitMask32(0b0100),"into":BitMask32(0b0000)},
                         "waypoint": 
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "UI": 
@@ -116,9 +132,9 @@ class CollisionWrapper:
             self.CH_world = CollisionHandlerQueue()
     
     def create_new_bin(self,name):
-        P=NodePath(name)
+        P = NodePath(name)
         P.reparentTo(self.node_root)
-        self.collision_bins[name]=P
+        self.collision_bins[name] = P
     
     def update(self,input_d):
         """
@@ -154,6 +170,8 @@ class CollisionWrapper:
                 
                 if dummy_id not in self.collision_objects:
                     my_dummy_node = NodePath(dummy_id)
+                    my_dummy_node.reparentTo(self.node_root)
+                    self.collision_objects[dummy_id] = my_dummy_node
                 else:
                     my_dummy_node = self.collision_objects[dummy_id]
                 
@@ -161,6 +179,37 @@ class CollisionWrapper:
                     ob = self.collision_objects[other]
                     ob.reparentTo(my_dummy_node)
         
+        if "create subpart" in input_d:
+            # I think I will just parent it?
+            # full input = {1:{
+            #        "sub part id":"groundray",
+            #        "sub tagname":"terrainray",
+            #        "subpart shape":("ray",None), # could be ("name",direction vector = (0,0,-1)) but none is default
+            #            }
+            for wo_id in input_d["create subpart"]:
+                more_info = input_d["create subpart"][wo_id]
+                sub_part_id = more_info["sub part id"]
+                tagname = more_info["sub tagname"]
+                assert type(sub_part_id) == str
+                sub_part_shape = more_info["sub part shape"]
+                sub_part_offset = more_info["sub part offset"]
+                sub_part_rotation = more_info["sub part rotation"]
+                combined_id = (wo_id,sub_part_id)
+                my_main_object = self.collision_objects[wo_id]
+                if sub_part_shape[0] =="ray":
+                    # reuse offset to mean 
+                    # offset = origin
+                    
+                    direction = sub_part_shape[1]
+                    my_new_collision_object = self.create_collision_ray(combined_id,my_main_object,tagname,sub_part_offset,direction)
+                else:
+                    raise NotImplementedError
+                self.collision_objects_parts[combined_id] = my_new_collision_object
+                if wo_id not in self.id_mappings:
+                    self.id_mappings[wo_id] = [combined_id]
+                else:
+                    self.id_mappings[wo_id].append(combined_id)
+                
         if "create complex" in input_d:
             # ok, doing this, having objects be keys in an input
             # dict is incredibly annoying, I should not be doing this.
@@ -197,6 +246,13 @@ class CollisionWrapper:
                 ob=self.collision_objects[ob_id]
                 ob.removeNode()
                 self.collision_objects.pop(ob_id)
+                
+                # clean up references to sub parts
+                if ob_id in self.id_mappings:
+                    for part_id in self.id_mappings[ob_id]:
+                        if part_id in self.collision_objects_parts:
+                            self.collision_objects_parts.pop(part_id)
+                
             input_d["destroy"]=[]
     
     def create_complex(self,world_object,tagname="terrain"):
@@ -277,7 +333,42 @@ class CollisionWrapper:
         
         #set it up so it's being tracked.
         self.cTrav.addCollider(col_NodeNP,self.CH_world)
+    
+    def create_collision_ray(self,ob_id,myobject,tag_name,origin=None,direction=None):
         
+        # same pattern as the mouse ray
+        # define node type and shape
+        col_Node = CollisionNode("general_col_node")
+        col_body = CollisionRay()
+        
+        if origin == None:
+            origin = (0,0,9)
+        if direction == None:
+            direction = (0,0,-1)
+        
+        col_body.setOrigin(*origin)
+        col_body.setDirection(*direction)
+        col_Node.addSolid(col_body)
+        
+        # track the object.
+        col_NodeNP = NodePath(col_Node)
+        col_NodeNP.reparentTo(myobject)
+        
+        # tag is being used to recover the object'
+        
+        col_NodeNP.set_tag(tag_name,str(ob_id))
+                
+        # set mask
+        # masks handle WHICH collisions are being looked for
+        # see __init__
+        col_Node.setFromCollideMask(self.bitmasks[tag_name]["from"])
+        col_Node.setIntoCollideMask(self.bitmasks[tag_name]["into"])
+        
+        #set it up so it's being tracked.
+        self.cTrav.addCollider(col_NodeNP,self.CH_world)
+    
+    
+    
     def fetch_objects_from_collision(self,collisionargs):
         #I should unpack these.
         """
@@ -287,12 +378,17 @@ class CollisionWrapper:
         #print(collisionargs[0])
         fromn = collisionargs[0].from_node
         inton = collisionargs[0].into_node
-        
-        surface_point = collisionargs[0].getSurfacePoint(self.node_root)
-        contact_pos = collisionargs[0].getContactPos(self.node_root)
-        interior_point = collisionargs[0].getInteriorPoint(self.node_root)
-        collision_normal = collisionargs[0].getSurfaceNormal(self.node_root)
-        
+        if collisionargs[0].has_contact_pos():
+            surface_point = collisionargs[0].getSurfacePoint(self.node_root)
+            contact_pos = collisionargs[0].getContactPos(self.node_root)
+            interior_point = collisionargs[0].getInteriorPoint(self.node_root)
+            collision_normal = collisionargs[0].getSurfaceNormal(self.node_root)
+        else:
+            surface_point = collisionargs[0].getSurfacePoint(self.node_root)
+            contact_pos = None
+            interior_point = collisionargs[0].getInteriorPoint(self.node_root)
+            collision_normal = collisionargs[0].getSurfaceNormal(self.node_root)
+            
         # what is this?
         prevt = collisionargs[0]
         
