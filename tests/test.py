@@ -28,7 +28,8 @@ class MyCollisionTest(unittest.TestCase):
         # this is just printing the collision dict froma  previous run of the same function
         # and copy pasting it here.
         
-        expected_output = {'myNPC2': {'myNPC1': {'from tag': 'NPC', 'from id': 'myNPC2', 'into tag': 'NPC', 'into id': 'myNPC1', 'collision normal': LVector3f(1, 0, 0), 'interior point': LPoint3f(-0.2, 0, 0), 'surface point': LPoint3f(0.3, 0, 0)}}, 'myNPC1': {'myNPC2': {'from tag': 'NPC', 'from id': 'myNPC1', 'into tag': 'NPC', 'into id': 'myNPC2', 'collision normal': LVector3f(-1, 0, 0), 'interior point': LPoint3f(0.3, 0, 0), 'surface point': LPoint3f(-0.2, 0, 0)}}}
+        expected_output = {'myNPC2': {'myNPC1': {'from tag': 'NPC', 'from id': 'myNPC2', 'into tag': 'NPC', 'into id': 'myNPC1', 'collision normal': LVector3f(1, 0, 0), 'interior point': LPoint3f(-0.2, 0, 0), 'surface point': LPoint3f(0.3, 0, 0), 'from part id': None, 'into part id': None}}, 'myNPC1': {'myNPC2': {'from tag': 'NPC', 'from id': 'myNPC1', 'into tag': 'NPC', 'into id': 'myNPC2', 'collision normal': LVector3f(-1, 0, 0), 'interior point': LPoint3f(0.3, 0, 0), 'surface point': LPoint3f(-0.2, 0, 0), 'from part id': None, 'into part id': None}}}
+
         
         W.collisions.update(
             {"create": {"myNPC1": "NPC", "myNPC2": "NPC", "myNPC3": "NPC"}})
@@ -74,13 +75,16 @@ class MyCollisionTest(unittest.TestCase):
         r = W.collisions.collision_checks()
         
         # basic setup works
-        assert r == {"('myNPC1', 'groundray')": {'terrain_id': {'from tag': 'terrainray', 'from id': "('myNPC1', 'groundray')", 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1, 1, 0), 'surface point': LPoint3f(1, 1, 0)}}}
+        assert r == {'myNPC1': {'terrain_id': {'from tag': 'terrainray', 'from id': 'myNPC1', 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1, 1, 0), 'surface point': LPoint3f(1, 1, 0), 'from part id': 'groundray', 'into part id': None}}}
+
         
         
         # updating position works, and returns correct follow up points
         W.collisions.update({"update": {"myNPC1": ((1.1, 1.1, 0), (0, 0, 0))}})
         r = W.collisions.collision_checks()
-        assert r == {"('myNPC1', 'groundray')": {'terrain_id': {'from tag': 'terrainray', 'from id': "('myNPC1', 'groundray')", 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1.1, 1.1, 0), 'surface point': LPoint3f(1.1, 1.1, 0)}}}
+        
+        assert r == {'myNPC1': {'terrain_id': {'from tag': 'terrainray', 'from id': 'myNPC1', 'into tag': 'terrain', 'into id': 'terrain_id', 'collision normal': LVector3f(0, 0, 1), 'interior point': LPoint3f(1.1, 1.1, 0), 'surface point': LPoint3f(1.1, 1.1, 0), 'from part id': 'groundray', 'into part id': None}}}
+
         
         
         # I guess I should add a test for cleanup?

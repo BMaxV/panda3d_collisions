@@ -107,7 +107,7 @@ class CollisionWrapper:
                         "UI": 
             {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
                         "item":
-            {"from":BitMask32(0b0000),"into":BitMask32(0b0100)},
+            {"from":BitMask32(0b0000),"into":BitMask32(0b0010)},
                         "players":
             {"from":BitMask32(0b0001),"into":BitMask32(0b0011)},
                         "NPC":
@@ -194,7 +194,7 @@ class CollisionWrapper:
                 sub_part_shape = more_info["sub part shape"]
                 sub_part_offset = more_info["sub part offset"]
                 sub_part_rotation = more_info["sub part rotation"]
-                combined_id = (wo_id,sub_part_id)
+                combined_id = str(wo_id)+","+str(sub_part_id)
                 my_main_object = self.collision_objects[wo_id]
                 if sub_part_shape[0] =="ray":
                     # reuse offset to mean 
@@ -366,7 +366,8 @@ class CollisionWrapper:
         
         #set it up so it's being tracked.
         self.cTrav.addCollider(col_NodeNP,self.CH_world)
-    
+        
+        return col_NodeNP
     
     
     def fetch_objects_from_collision(self,collisionargs):
@@ -388,24 +389,36 @@ class CollisionWrapper:
             contact_pos = None
             interior_point = collisionargs[0].getInteriorPoint(self.node_root)
             collision_normal = collisionargs[0].getSurfaceNormal(self.node_root)
-            
-        # what is this?
-        prevt = collisionargs[0]
-        
+                
         from_tag, from_id = get_info_from_col_node(fromn)
         into_tag, into_id = get_info_from_col_node(inton)
+        
+        # I probably need to extend this here.
+        # I want the result to be grabbable from the 
+        
+        from_part_id = None
+        into_part_id = None
+        if "," in from_id:
+            from_id_m = from_id.split(",")
+            from_id, from_part_id = from_id_m
+        if "," in into_id:
+            into_id_m = from_id.split(",")
+            into_id, into_part_id = into_id_m
         
         if from_id == into_id:
             from_id = None
             into_id = None
                 
-        output_d={"from tag":from_tag,
+        output_d = {"from tag":from_tag,
                 "from id":from_id,
                 "into tag":into_tag,
                 "into id":into_id,
                 "collision normal":collision_normal,
                 "interior point":interior_point,
-                "surface point":surface_point}
+                "surface point":surface_point,
+                "from part id":from_part_id,
+                "into part id":into_part_id,
+                }
         
         return output_d
     
